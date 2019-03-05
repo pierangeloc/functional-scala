@@ -2,7 +2,9 @@
 
 package net.degoes.essentials
 
+import java.io.File
 import java.time.Instant
+
 import scala.collection.mutable
 import scala.util.Try
 
@@ -1104,7 +1106,13 @@ object typeclasses {
 
       sort1(lessThan) ++ List(x) ++ sort1(notLessThan)
   }
-  def sort2[A: Ord](l: List[A]): List[A] = ???
+
+  def sort2[A: Ord](l: List[A]): List[A] = l match {
+    case Nil => Nil
+    case x :: xs =>
+      val (lessThan, notLessThan) = xs.partition(_ < x)
+      sort2(lessThan) ++ List(x) ++ sort2(notLessThan)
+  }
 
   //
   // EXERCISE 2
@@ -1119,16 +1127,25 @@ object typeclasses {
 
     def root: A
   }
+
   object PathLike {
     def apply[A](implicit A: PathLike[A]): PathLike[A] = A
   }
+
   sealed trait MyPath
+
   object MyPath {
+    case object Root extends MyPath
+    case class Node(name: String, parent: MyPath) extends MyPath
+
     implicit val MyPathPathLike: PathLike[MyPath] =
       new PathLike[MyPath] {
-        def child(parent: MyPath, name: String): MyPath = ???
-        def parent(node: MyPath): Option[MyPath] = ???
-        def root: MyPath = ???
+        def child(parent: MyPath, name: String): MyPath = MyPath.Node(name, parent)
+        def parent(node: MyPath): Option[MyPath] = node match {
+          case MyPath.Root => None
+          case MyPath.Node(_, parent) => Some(parent)
+        }
+        def root: MyPath = MyPath.Root
       }
     }
 
@@ -1137,7 +1154,14 @@ object typeclasses {
   //
   // Create an instance of the `PathLike` type class for `java.io.File`.
   //
-  implicit val FilePathLike: PathLike[java.io.File] = ???
+  implicit val FilePathLike: PathLike[java.io.File] = new PathLike[java.io.File] {
+
+    override def child(parent: File, name: String): File = new File(parent, name)
+
+    override def parent(node: File): Option[File] = Option.apply(node.getParentFile)
+
+    override def root: File = new File("/")
+  }
 
   //
   // EXERCISE 4
@@ -1145,10 +1169,12 @@ object typeclasses {
   // Create two laws for the `PathLike` type class.
   //
   trait PathLikeLaws[A] extends PathLike[A] {
-    def law1: Boolean = ???
+    def rootHasNoParent: Boolean = parent(root).isEmpty
+    def childOfParentConsistency(node: A): Boolean =
 
-    def law2(node: A, name: String, assertEquals: (A, A) => Boolean): Boolean =
-      ???
+
+    def childOfParentConsistency(node: A, name: String, assertEquals: (A, A) => Boolean): Boolean =
+      assertEquals(parent(child(node, name)), Some(node))
   }
 
   //
@@ -1159,10 +1185,10 @@ object typeclasses {
   //
   implicit class PathLikeSyntax[A](a: A) {
     def / (name: String)(implicit A : PathLike[A]): A =
-      ???
+      A.child(a, name)
 
     def parent(implicit A : PathLike[A]): Option[A] =
-      ???
+      A.parent(a)
   }
   def root[A: PathLike]: A = PathLike[A].root
 

@@ -1170,11 +1170,8 @@ object typeclasses {
   //
   trait PathLikeLaws[A] extends PathLike[A] {
     def rootHasNoParent: Boolean = parent(root).isEmpty
-    def childOfParentConsistency(node: A): Boolean =
-
-
     def childOfParentConsistency(node: A, name: String, assertEquals: (A, A) => Boolean): Boolean =
-      assertEquals(parent(child(node, name)), Some(node))
+      parent(child(node, name)).map(assertEquals(_, node)).getOrElse(false)
   }
 
   //

@@ -3,9 +3,6 @@
 package net.degoes.essentials
 
 import java.time.Instant
-
-import net.degoes.essentials.tc_motivating.Ord.GT
-
 import scala.collection.mutable
 import scala.util.Try
 
@@ -523,15 +520,17 @@ object higher_order {
   // Implement the following higher-order function.
   //
   def either[A, B, C](f: A => B, g: C => B): Either[A, C] => B =
-    ???
+    _.fold(f, g)
 
   //
   // EXERCISE 4
   //
   // Implement the following higher-order function.
   //
-  def choice[A, B, C, D](f: A => B, g: C => D): Either[A, C] => Either[B, D] =
-    ???
+  def choice[A, B, C, D](f: A => B, g: C => D): Either[A, C] => Either[B, D] = {
+    case Left(a) => Left(f(a))
+    case Right(c) => Right(g(c))
+  }
 
   //
   // EXERCISE 5
@@ -539,7 +538,7 @@ object higher_order {
   // Implement the following higher-order function.
   //
   def compose[A, B, C](f: B => C, g: A => B): A => C =
-    ???
+    g andThen f
 
   //
   // EXERCISE 6
@@ -831,28 +830,6 @@ object higher_kinded {
 
 object tc_motivating {
 
-  def sort[A](as: List[A]): List[A]
-
-//  OO way
-
-  sealed trait Ord
-  object Ord {
-    case object LT extends Ord
-    case object GT extends Ord
-    case object EQ extends Ord
-  }
-  trait Comparable[A] {
-    def compare(other: A): Ord
-  }
-
-  case class Person(name: String, age: Int) extends Comparable[Person] {
-    override def compare(that: Person): Ord =
-      if (this.name < that.name) Ord.LT
-      else if (this.name > that.name) Ord.GT
-      else if (this.age < that.age) Ord.LT
-      else if (this.age > that.age) Ord.GT
-      else Ord.EQ
-  }
   /*
   A type class is a tuple of three things:
 
@@ -879,16 +856,19 @@ object tc_motivating {
       (lt(a, b) && lt(b, c) == lt(a, c)) ||
       (!lt(a, b) || !lt(b, c))
   }
+
   implicit class LessThanSyntax[A](l: A) {
     def < (r: A)(implicit A: LessThan[A]): Boolean = A.lt(l, r)
     def >= (r: A)(implicit A: LessThan[A]): Boolean = !A.lt(l, r)
   }
+
   object LessThan {
     def apply[A](implicit A: LessThan[A]): LessThan[A] = A
 
     implicit val LessThanInt: LessThan[Int] = new LessThan[Int] {
       def lt(l: Int, r: Int): Boolean = l < r
     }
+
     implicit def LessThanList[A: LessThan]: LessThan[List[A]] = new LessThan[List[A]] {
       def lt(l: List[A], r: List[A]): Boolean =
         (l, r) match {
@@ -924,9 +904,11 @@ object tc_motivating {
 }
 
 object hashmap {
+
   trait Eq[A] {
     def eq(l: A, r: A): Boolean
   }
+
   object Eq {
     def apply[A](implicit A: Eq[A]): Eq[A] = A
 
@@ -935,6 +917,7 @@ object hashmap {
         def eq(l: Int, r: Int): Boolean = l == r
       }
   }
+
   implicit class EqSyntax[A](l: A) {
     def === (r: A)(implicit A: Eq[A]): Boolean = A.eq(l, r)
   }
@@ -945,16 +928,17 @@ object hashmap {
     final def hashConsistencyLaw(a1: A, a2: A): Boolean =
       eq(a1, a2) == ((hash(a1) === hash(a2)) || !eq(a1, a2))
   }
+
   object Hash {
     def apply[A](implicit A: Hash[A]): Hash[A] = A
 
     implicit val HashInt: Hash[Int] =
       new Hash[Int] {
         def hash(a: Int): Int = a
-
         def eq(l: Int, r: Int): Boolean = l == r
       }
   }
+
   implicit class HashSyntax[A](val a: A) extends AnyVal {
     def hash(implicit A: Hash[A]): Int = A.hash(a)
   }
